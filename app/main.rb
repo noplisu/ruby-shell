@@ -1,9 +1,19 @@
-def type(args)
-  if ["exit", "echo", "type"].include?(args[0])
-    "#{args[0]} is a shell builtin"
-  else
-    "#{args[0]}: not found"
+def type(command)
+  return"#{command} is a shell builtin" if ["exit", "echo", "type"].include?(command)
+
+  paths = ENV['PATH'].split(':')
+  paths.each do |path|
+    begin
+      next unless Dir.entries(path).detect do |child|
+        child == command
+      end
+      return "#{command} is #{File.join(path, command)}"
+    rescue Errno::ENOENT
+      next
+    end
   end
+
+  "#{command}: not found"
 end
 
 while true do
@@ -13,7 +23,7 @@ while true do
 
   break if command == "exit"
   if command == "type"
-    $stdout.write(type(args) + "\n")
+    $stdout.write(type(args[0]) + "\n")
   elsif command == "echo"
     $stdout.write(args.join(" ") + "\n")
   else
