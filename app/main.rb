@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
 
 def type(command)
-  return"#{command} is a shell builtin" if ["exit", "echo", "type"].include?(command)
+  return"#{command} is a shell builtin" if ["exit", "echo", "type", "pwd"].include?(command)
 
   exe = find_executable(command)
 
@@ -33,6 +33,11 @@ while true do
   
   if command == "echo"
     $stdout.write(args.join(" ") + "\n")
+    next
+  end
+
+  if command == "pwd"
+    $stdout.write(Dir.pwd + "\n")
     next
   end
 
