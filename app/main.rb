@@ -1,5 +1,7 @@
 #!/usr/bin/ruby
 
+require 'shellwords'
+
 def type(command)
   return"#{command} is a shell builtin" if ["exit", "echo", "type", "pwd", "cd"].include?(command)
 
@@ -33,7 +35,7 @@ end
 while true do
   $stdout.write("$ ")
 
-  command, *args = gets.chomp.split(" ")
+  command, *args = Shellwords.split(gets.chomp)
 
   break if command == "exit"
   next if command == nil
