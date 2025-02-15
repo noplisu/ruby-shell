@@ -1,13 +1,22 @@
 #!/usr/bin/ruby
 
 def type(command)
-  return"#{command} is a shell builtin" if ["exit", "echo", "type", "pwd"].include?(command)
+  return"#{command} is a shell builtin" if ["exit", "echo", "type", "pwd", "cd"].include?(command)
 
   exe = find_executable(command)
 
   return "#{command} is #{exe[0]}/#{exe[1]}" if exe
 
   "#{command}: not found"
+end
+
+def cd(path)
+  begin
+    Dir.chdir(path)
+    nil
+  rescue Errno::ENOENT
+    "cd: #{path}: No such file or directory"
+  end
 end
 
 def find_executable(command)
@@ -38,6 +47,12 @@ while true do
 
   if command == "pwd"
     $stdout.write(Dir.pwd + "\n")
+    next
+  end
+
+  if command == "cd"
+    output = cd(args[0])
+    $stdout.write(output + "\n") if output
     next
   end
 
