@@ -1,19 +1,21 @@
+#!/usr/bin/ruby
+
 def type(command)
   return"#{command} is a shell builtin" if ["exit", "echo", "type"].include?(command)
 
-  paths = ENV['PATH'].split(':')
-  paths.each do |path|
-    begin
-      next unless Dir.entries(path).detect do |child|
-        child == command
-      end
-      return "#{command} is #{File.join(path, command)}"
-    rescue Errno::ENOENT
-      next
-    end
-  end
+  exe = find_executable(command)
+
+  return "#{command} is #{exe[0]}/#{exe[1]}" if exe
 
   "#{command}: not found"
+end
+
+def find_executable(command)
+  ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+    exe = File.join(path, command)
+    return [path, command] if File.executable?(exe) && !File.directory?(exe)
+  end
+  nil
 end
 
 while true do
@@ -22,11 +24,23 @@ while true do
   command, *args = gets.chomp.split(" ")
 
   break if command == "exit"
+  next if command == nil
+
   if command == "type"
     $stdout.write(type(args[0]) + "\n")
-  elsif command == "echo"
-    $stdout.write(args.join(" ") + "\n")
-  else
-    $stdout.write("#{command}: command not found\n")
+    next
   end
+  
+  if command == "echo"
+    $stdout.write(args.join(" ") + "\n")
+    next
+  end
+
+  executable = find_executable(command)
+  if executable
+    system(executable[1], *args)
+    next
+  end
+
+  $stdout.write("#{command}: command not found\n")
 end
