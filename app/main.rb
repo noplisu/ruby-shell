@@ -3,7 +3,7 @@
 require 'shellwords'
 
 def type(command)
-  return"#{command} is a shell builtin" if ["exit", "echo", "type", "pwd", "cd"].include?(command)
+  return"#{command} is a shell builtin" if builtin?(command)
 
   exe = find_executable(command)
 
@@ -32,40 +32,51 @@ def find_executable(command)
   nil
 end
 
-while true do
-  $stdout.write("$ ")
+def stdout(output)
+  $stdout.write(output + "\n") if output
+end
 
+def builtin(command, args)
+  return type(args[0]) if command == "type"
+  return args.join(" ") if command == "echo"
+  return Dir.pwd if command == "pwd"
+  return cd(args[0]) if command == "cd"
+end
+
+def builtin?(command)
+  ["exit", "echo", "type", "pwd", "cd"].include?(command)
+end
+
+def handle_command(command, args)
+  return builtin(command, args) if builtin?(command)
+
+  executable = find_executable(command)
+  return `#{executable[1]} #{args.join(" ")}` if executable
+
+  "#{command}: command not found"
+end
+
+def redirect_stdout?(args)
+  args[-2] == ">" || args[-2] == "1>"
+end
+
+$stdout.write("$ ")
+while true do
   command, *args = Shellwords.split(gets.chomp)
 
   break if command == "exit"
   next if command == nil
 
-  if command == "type"
-    $stdout.write(type(args[0]) + "\n")
-    next
+  if redirect_stdout?(args)
+    original_stdout = $stdout.dup
+    $stdout.reopen(args[-1], "w")
+    begin
+      stdout(handle_command(command, args[0..-3]))
+    ensure
+      $stdout.reopen(original_stdout)
+    end
+  else
+    stdout(handle_command(command, args))
   end
-  
-  if command == "echo"
-    $stdout.write(args.join(" ") + "\n")
-    next
-  end
-
-  if command == "pwd"
-    $stdout.write(Dir.pwd + "\n")
-    next
-  end
-
-  if command == "cd"
-    output = cd(args[0])
-    $stdout.write(output + "\n") if output
-    next
-  end
-
-  executable = find_executable(command)
-  if executable
-    system(executable[1], *args)
-    next
-  end
-
-  $stdout.write("#{command}: command not found\n")
+  $stdout.write("$ ")
 end
