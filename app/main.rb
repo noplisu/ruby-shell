@@ -12,7 +12,10 @@ end
 
 def cd(path)
   begin
-    Dir.chdir(path)
+    return nil if !path
+
+    Dir.chdir(File.expand_path(path))
+
     nil
   rescue Errno::ENOENT
     "cd: #{path}: No such file or directory"
