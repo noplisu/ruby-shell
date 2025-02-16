@@ -20,7 +20,7 @@ def cd(path)
 
     nil
   rescue Errno::ENOENT
-    "cd: #{path}: No such file or directory"
+    "cd: #{path}: No such file or directory\n"
   end
 end
 
@@ -33,13 +33,13 @@ def find_executable(command)
 end
 
 def stdout(output)
-  $stdout.write(output + "\n") if output
+  $stdout.write(output) if output
 end
 
 def builtin(command, args)
-  return type(args[0]) if command == "type"
-  return args.join(" ") if command == "echo"
-  return Dir.pwd if command == "pwd"
+  return "#{type(args[0])}\n" if command == "type"
+  return "#{args.join(" ")}\n" if command == "echo"
+  return "#{Dir.pwd}\n" if command == "pwd"
   return cd(args[0]) if command == "cd"
 end
 
@@ -47,21 +47,42 @@ def builtin?(command)
   ["exit", "echo", "type", "pwd", "cd"].include?(command)
 end
 
+def cat_command(args)
+  all_content = args.map do |file|
+    file = file.strip
+    if File.exist?(file)
+      File.read(file).strip
+    else
+      $stderr.write("cat: #{file}: No such file or directory\n")
+      nil
+    end
+  end
+  "#{all_content.join('')}\n"
+end
+
 def handle_command(command, args)
   return builtin(command, args) if builtin?(command)
 
-  executable = find_executable(command)
-  return `#{executable[1]} #{args.join(" ")}` if executable
+  begin
+    return cat_command(args) if command == 'cat'
 
-  "#{command}: command not found"
+    executable = find_executable(command)
+    # return `'#{executable[1]}' #{args.join(" ")}` if executable
+    success = system(command, *args) if executable
+    return nil if success
+  rescue Errno::ENOENT
+    $stderr.write("#{command} #{args.join(" ")}: No such file or directory")
+  end
+
+  "#{command}: command not found\n"
 end
 
 def redirect_stdout?(args)
   args[-2] == ">" || args[-2] == "1>"
 end
 
-$stdout.write("$ ")
 while true do
+  $stdout.write("$ ")
   command, *args = Shellwords.split(gets.chomp)
 
   break if command == "exit"
@@ -69,8 +90,8 @@ while true do
 
   if redirect_stdout?(args)
     original_stdout = $stdout.dup
-    $stdout.reopen(args[-1], "w")
     begin
+      $stdout.reopen(args[-1], "w")
       stdout(handle_command(command, args[0..-3]))
     ensure
       $stdout.reopen(original_stdout)
@@ -78,5 +99,4 @@ while true do
   else
     stdout(handle_command(command, args))
   end
-  $stdout.write("$ ")
 end
