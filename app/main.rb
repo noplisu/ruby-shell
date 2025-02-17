@@ -62,23 +62,27 @@ end
 
 def handle_command(command, args)
   return builtin(command, args) if builtin?(command)
+  return cat_command(args) if command == 'cat'
 
-  begin
-    return cat_command(args) if command == 'cat'
-
-    executable = find_executable(command)
-    # return `'#{executable[1]}' #{args.join(" ")}` if executable
-    success = system(command, *args) if executable
-    return nil if success
-  rescue Errno::ENOENT
-    $stderr.write("#{command} #{args.join(" ")}: No such file or directory")
+  executable = find_executable(command)
+  if executable
+    success = system(command, *args)
+    return nil
   end
 
-  "#{command}: command not found\n"
+  $stderr.write("#{command}: command not found\n")
+  nil
+rescue Errno::ENOENT
+  $stderr.write("#{command} #{args.join(" ")}: No such file or directory")
+  return nil
 end
 
 def redirect_stdout?(args)
   args[-2] == ">" || args[-2] == "1>"
+end
+
+def redirect_stderr?(args)
+  args[-2] == "2>"
 end
 
 while true do
@@ -95,6 +99,14 @@ while true do
       stdout(handle_command(command, args[0..-3]))
     ensure
       $stdout.reopen(original_stdout)
+    end
+  elsif redirect_stderr?(args)
+    original_stderr = $stderr.dup
+    begin
+      $stderr.reopen(args[-1], "w")
+      stdout(handle_command(command, args[0..-3]))
+    ensure
+      $stderr.reopen(original_stderr)
     end
   else
     stdout(handle_command(command, args))
