@@ -57,7 +57,7 @@ def cat_command(args)
       nil
     end
   end
-  "#{all_content.join('')}\n"
+  "#{all_content.join('')}\n" if all_content.any?
 end
 
 def handle_command(command, args)
@@ -89,6 +89,10 @@ def append_stdout?(args)
   args[-2] == ">>" || args[-2] == "1>>"
 end
 
+def append_stderr?(args)
+  args[-2] == "2>>"
+end
+
 def redirect(stream, mode, path)
   original_stdout = stream.dup
   begin
@@ -116,6 +120,10 @@ while true do
     end
   elsif redirect_stderr?(args)
     redirect($stderr, "w", args[-1]) do
+      handle_command(command, args[0..-3])
+    end
+  elsif append_stderr?(args)
+    redirect($stderr, "a", args[-1]) do
       handle_command(command, args[0..-3])
     end
   else
