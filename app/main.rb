@@ -85,6 +85,20 @@ def redirect_stderr?(args)
   args[-2] == "2>"
 end
 
+def append_stdout?(args)
+  args[-2] == ">>" || args[-2] == "1>>"
+end
+
+def redirect(stream, mode, path)
+  original_stdout = stream.dup
+  begin
+    stream.reopen(path, mode)
+    stdout(yield)
+  ensure
+    stream.reopen(original_stdout)
+  end
+end
+
 while true do
   $stdout.write("$ ")
   command, *args = Shellwords.split(gets.chomp)
@@ -93,20 +107,16 @@ while true do
   next if command == nil
 
   if redirect_stdout?(args)
-    original_stdout = $stdout.dup
-    begin
-      $stdout.reopen(args[-1], "w")
-      stdout(handle_command(command, args[0..-3]))
-    ensure
-      $stdout.reopen(original_stdout)
+    redirect($stdout, "w", args[-1]) do
+      handle_command(command, args[0..-3])
+    end
+  elsif append_stdout?(args)
+    redirect($stdout, "a", args[-1]) do
+      handle_command(command, args[0..-3])
     end
   elsif redirect_stderr?(args)
-    original_stderr = $stderr.dup
-    begin
-      $stderr.reopen(args[-1], "w")
-      stdout(handle_command(command, args[0..-3]))
-    ensure
-      $stderr.reopen(original_stderr)
+    redirect($stderr, "w", args[-1]) do
+      handle_command(command, args[0..-3])
     end
   else
     stdout(handle_command(command, args))
